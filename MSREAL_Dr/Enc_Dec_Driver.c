@@ -284,7 +284,7 @@ ssize_t ED_read(struct file *pfile, char __user *buffer, size_t length, loff_t *
 				return -EFAULT;
 			}
 			k++;
-			if(k == 81)
+			if(k == 100)
 			{
 				endRead=1;
 				k = 0;
@@ -302,7 +302,7 @@ ssize_t ED_read(struct file *pfile, char __user *buffer, size_t length, loff_t *
 				return -EFAULT;
 			}
 			k++;
-			if(k == 81)
+			if(k == 100)
 			{
 				endRead=1;
 				k = 0;
@@ -344,10 +344,15 @@ ssize_t ED_write(struct file *pfile, const char __user *buffer, size_t length, l
 	int minor = MINOR(pfile->f_inode->i_rdev);
 	int ret = 0, i = 0, pos = 0;
 	unsigned int xpos=0;
-	unsigned int rgb=0;
-	int start, reset, ready, start_enc, start_dec, txt_length, public_key, private_key, e_key;
+	unsigned int value=0;
+	int vrednost = 0;
+	char string[40];
+	int case_vr = 0;
+	char start1[] = "start", e_key1[]="e_key", reset1[]="reset", ready1[]="ready", public_key1[]="public_key", private_key1[]="private_key", start_enc1[]="start_enc", start_dec1[]="start_dec", txt_length1[]="txt_length";
+//	int start, reset, ready, start_enc, start_dec, txt_length, public_key, private_key, e_key;
 	ret = copy_from_user(buff, buffer, length);
-
+	
+	
 	if(ret){
 		printk("Copy from user failed \n");
 		return -EFAULT;
@@ -358,7 +363,7 @@ ssize_t ED_write(struct file *pfile, const char __user *buffer, size_t length, l
 		
 		case 0://bram0
 
-			sscanf(buff, "(%d); %d", &xpos, &rgb);
+			sscanf(buff, "(%d); %d", &xpos, &value);
 
 			if (xpos > 8191)
 			{
@@ -368,14 +373,14 @@ ssize_t ED_write(struct file *pfile, const char __user *buffer, size_t length, l
 			{
 				position = xpos*4;
 				pos = position +i*4;
-				iowrite32(rgb, bp1->base_addr+pos);
+				iowrite32(value, bp1->base_addr+pos);
 			}
 
 		break;
 
 		case 1://bram1
 
-			sscanf(buff, "(%d); %d", &xpos, &rgb);
+			sscanf(buff, "(%d); %d", &xpos, &value);
 
 			if (xpos > 8191)
 			{
@@ -385,14 +390,144 @@ ssize_t ED_write(struct file *pfile, const char __user *buffer, size_t length, l
 			{
 				position = xpos*4;
 				pos = position +i*4;
-				iowrite32(rgb, bp2->base_addr+pos);
+				iowrite32(value, bp2->base_addr+pos);
 			}
 
 		break;
 
 		case 2://enc_dec
+		
+			
+				
+			sscanf(buff, "%s = %d", string, &vrednost);
+			
+			if(strcmp(string, e_key1)==0){
+				case_vr = 1;
+			}else if(strcmp(string, private_key1)==0){
+				case_vr = 2;
+			}else if(strcmp(string, public_key1)==0){
+				case_vr = 3;
+			}else if(strcmp(string, txt_length1)==0){
+				case_vr = 4;
+			}else if(strcmp(string, start_enc1)==0){
+				case_vr = 5;
+			}else if(strcmp(string, start_dec1)==0){
+				case_vr = 6;
+			}else if(strcmp(string, start1)==0){
+				case_vr = 7;
+			}else if(strcmp(string, reset1)==0){
+				case_vr = 8;
+			}else if(strcmp(string, ready1)==0){
+				case_vr = 9;
+			}else{
+				printk(KERN_ALERT"Ne postoji registar");
+			}
 
-			sscanf(buff, "%d, %d, %d, %d, %d, %d, %d, %d, %d", &e_key, &private_key, &public_key, &txt_length, &start_enc, &start_dec, &start, &reset, &ready);
+		
+			switch(case_vr){
+
+
+				case 1:
+				
+						if(vrednost!=5 && vrednost!=5){
+							printk(KERN_WARNING"IP:mora biti 5");
+						}else{
+							iowrite32(vrednost, ip->base_addr);
+							printk(KERN_WARNING"Vrednost e_key signala je: %d", vrednost);
+						
+				}break;
+
+				case 3:
+					
+
+						if(vrednost>100 && vrednost<0){
+							printk(KERN_WARNING"IP:mora biti izmedju 0 i 100");
+						}else{
+							iowrite32(vrednost, ip->base_addr+8);
+							printk(KERN_WARNING"Vrednost public_key signala je: %d", vrednost);
+					
+				}break;
+
+			
+				case 2:
+			
+						if(vrednost>100 && vrednost<0){
+							printk(KERN_WARNING"IP:mora biti izmedju 0  i 99");
+						}else{
+							iowrite32(vrednost, ip->base_addr+4);
+							printk(KERN_WARNING"Vrednost private_key signala je: %d", vrednost);
+					
+				}break;
+
+				case 4:
+						
+						if(vrednost>8191){
+							printk(KERN_WARNING"IP:Duzina teksta prevelika");
+						}else{
+							iowrite32(vrednost, ip->base_addr+12);
+							printk(KERN_WARNING"Vrednost txt_length signala je: %d", vrednost);
+					
+				}break;
+
+
+				case 5:
+		
+						if(vrednost!=0 && vrednost!=1){
+							printk(KERN_WARNING"IP:start_enc mora biti 1 ili 0");
+						}else{
+							iowrite32(vrednost, ip->base_addr+16);
+							printk(KERN_WARNING"Vrednost start_enc signala je: %d", vrednost);
+					
+				}break;
+	
+
+				case 6:
+
+						if(vrednost!=0 && vrednost!=1){
+							printk(KERN_WARNING"IP: start_dec mora biti 1 ili 0");
+						}else{
+							iowrite32(vrednost, ip->base_addr+20);
+							printk(KERN_WARNING"Vrednost start_dec signala je: %d", vrednost);
+					
+				}break;
+				
+
+				case 9:
+						if(vrednost!=0 && vrednost!=1){
+							printk(KERN_WARNING"IP:ready mora biti 1 ili 0");
+						}else{
+							iowrite32(vrednost, ip->base_addr+32);
+							printk(KERN_WARNING"Vrednost ready signala je: %d", vrednost);
+					
+				}break;
+
+
+				case 8: 
+
+	
+						if(vrednost!=0 && vrednost!=1){
+							printk(KERN_WARNING"IP:reset mora biti 1 ili 0");
+						}else{
+							iowrite32(vrednost, ip->base_addr+28);
+							printk(KERN_WARNING"Vrednost reset signala je: %d", vrednost);
+					
+				}break;
+
+
+				case 7:
+			
+		
+						if(vrednost!=0 && vrednost!=1){
+							printk(KERN_WARNING"IP:start mora biti 1 ili 0");
+						}else{
+							iowrite32(vrednost, ip->base_addr+24);
+							printk(KERN_WARNING"Vrednost start signala je: %d", vrednost);
+					
+				}break;
+			}
+
+
+/*			sscanf(buff, "%d, %d, %d, %d, %d, %d, %d, %d, %d", &e_key, &private_key, &public_key, &txt_length, &start_enc, &start_dec, &start, &reset, &ready);
 
 			if (ret != -EINVAL) {
 				if (e_key != 5) {
@@ -424,20 +559,28 @@ ssize_t ED_write(struct file *pfile, const char __user *buffer, size_t length, l
 			
 			} else {
 		
-				iowrite32(e_key, ip->base_addr);//e_key
-				iowrite32(private_key, ip->base_addr +4);//private_key
-				iowrite32(public_key, ip->base_addr +8);//public_key
-				iowrite32(txt_length, ip->base_addr +12);//txt_length
-				iowrite32(start_enc, ip->base_addr +16);//start_enc
-				iowrite32(start_dec, ip->base_addr +20);//strat_dec
-				iowrite32(start, ip->base_addr +24);//start
-				iowrite32(reset, ip->base_addr +28);//reset
-				iowrite32(ready, ip->base_addr +32);//ready
-				
+				iowrite32(e_key, ip->base_addr);
+				printk(KERN_INFO"Vrednost e_key: %d\n", e_key);					
+				iowrite32(private_key, ip->base_addr +4);
+				printk(KERN_INFO"Vrednost public_key: %d\n", public_key);	
+				iowrite32(public_key, ip->base_addr +8);
+				printk(KERN_INFO"Vrednost private_key: %d\n", private_key);	
+				iowrite32(txt_length, ip->base_addr +12);
+				printk(KERN_INFO"Vrednost txt_length: %d\n", txt_length);	
+				iowrite32(start_enc, ip->base_addr +16);
+				printk(KERN_INFO"Vrednost start_enc: %d\n", start_enc);	
+				iowrite32(start_dec, ip->base_addr +20);
+				printk(KERN_INFO"Vrednost start_dec: %d\n", start_dec);	
+				iowrite32(start, ip->base_addr +24);
+				printk(KERN_INFO"Vrednost start: %d\n", start);	
+				iowrite32(reset, ip->base_addr +28);
+				printk(KERN_INFO"Vrednost reset: %d\n", reset);	
+				iowrite32(ready, ip->base_addr +32);
+				printk(KERN_INFO"Vrednost ready: %d\n", ready);			
 			}
 
-		}
 		
+	}*/
 		break;
 
 		default:
