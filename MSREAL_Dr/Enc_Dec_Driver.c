@@ -9,7 +9,9 @@
 #include <linux/errno.h>
 #include <linux/kdev_t.h>
 #include <linux/uaccess.h>
+#include <linux/of.h>
 
+#include <linux/mm.h>//za memorijsko mapiranje
 #include <linux/io.h>//iowrite ioread
 #include <linux/slab.h>//kmalloc kfree
 #include <linux/platform_device.h>//platform driver
@@ -48,8 +50,9 @@ static int ED_probe(struct platform_device *pdev);
 static int ED_remove(struct platform_device *pdev);
 int ED_open(struct inode *pinode, struct file *pfile);
 int ED_close(struct inode *pinode, struct file *pfile);
-ssize_t ED_read(struct file *pfile, char __user *buffer, size_t length, loff_t *offset);
-ssize_t ED_write(struct file *pfile, const char __user *buffer, size_t length, loff_t *offset);
+static ssize_t ED_read(struct file *pfile, char __user *buffer, size_t length, loff_t *offset);
+static ssize_t ED_write(struct file *pfile, const char __user *buffer, size_t length, loff_t *offset);
+int ED_mmap (struct file *f, struct vm_area_struct *vma_s);
 
 static int __init ED_init(void);
 static void __exit ED_exit(void);
@@ -61,6 +64,7 @@ struct file_operations my_fops =
 	.read = ED_read,
 	.write = ED_write,
 	.release = ED_close,
+	.mmap = ED_mmap,
 };
 
 static struct of_device_id ED_of_match[] = {
@@ -84,6 +88,18 @@ static struct platform_driver ED_driver = {
 	.probe = ED_probe,
 	.remove = ED_remove,
 };
+
+static int check_prime(int a)
+{
+	int c;
+	
+	for (c = 2; c<= a - 1; c++)
+	{
+		if(a%c == 0)
+		return 0;
+	}
+	return 1;
+}
 
 
 static int ED_probe (struct platform_device *pdev)
@@ -312,7 +328,7 @@ ssize_t ED_read(struct file *pfile, char __user *buffer, size_t length, loff_t *
 		case 2://ip
 		
 			value = ioread32(ip->base_addr+k*4);
-			len = scnprintf(buff, BUFF_SIZE, "%d\n", value);
+			len = scnprintf(buff, BUFF_SIZE, "e_key: %d\n", value);
 			*offset += len;
 			ret=copy_to_user(buffer, buff, len);
 			if(ret)
@@ -346,6 +362,7 @@ ssize_t ED_write(struct file *pfile, const char __user *buffer, size_t length, l
 	unsigned int xpos=0;
 	unsigned int value=0;
 	int vrednost = 0;
+	int prime = 0;
 	char string[40];
 	int case_vr = 0;
 	char start1[] = "start", e_key1[]="e_key", reset1[]="reset", ready1[]="ready", public_key1[]="public_key", private_key1[]="private_key", start_enc1[]="start_enc", start_dec1[]="start_dec", txt_length1[]="txt_length";
@@ -430,42 +447,45 @@ ssize_t ED_write(struct file *pfile, const char __user *buffer, size_t length, l
 				case 1:
 				
 						if(vrednost!=5 && vrednost!=5){
-							printk(KERN_WARNING"IP:mora biti 5");
+							printk(KERN_WARNING"IP:mora biti 5\n");
 						}else{
 							iowrite32(vrednost, ip->base_addr);
-							printk(KERN_WARNING"Vrednost e_key signala je: %d", vrednost);
+							printk(KERN_WARNING"Vrednost e_key signala je: %d\n", vrednost);
 						
 				}break;
 
 				case 3:
 					
-
-						if(vrednost>100 && vrednost<0){
-							printk(KERN_WARNING"IP:mora biti izmedju 0 i 100");
+							prime = check_prime(vrednost);
+							if(prime != 1)
+						{
+							printk(KERN_WARNING"IP:Mora biti prost broj.\n");
 						}else{
 							iowrite32(vrednost, ip->base_addr+8);
-							printk(KERN_WARNING"Vrednost public_key signala je: %d", vrednost);
+							printk(KERN_WARNING"Vrednost public_key signala je: %d\n", vrednost);
 					
 				}break;
 
 			
 				case 2:
 			
-						if(vrednost>100 && vrednost<0){
-							printk(KERN_WARNING"IP:mora biti izmedju 0  i 99");
+						prime = check_prime(vrednost);
+						if(prime != 1)
+						{
+							printk(KERN_WARNING"IP:Mora biti prost broj.\n");
 						}else{
 							iowrite32(vrednost, ip->base_addr+4);
-							printk(KERN_WARNING"Vrednost private_key signala je: %d", vrednost);
+							printk(KERN_WARNING"Vrednost private_key signala je: %d\n", vrednost);
 					
 				}break;
 
 				case 4:
 						
 						if(vrednost>8191){
-							printk(KERN_WARNING"IP:Duzina teksta prevelika");
+							printk(KERN_WARNING"IP:Duzina teksta prevelika\n");
 						}else{
 							iowrite32(vrednost, ip->base_addr+12);
-							printk(KERN_WARNING"Vrednost txt_length signala je: %d", vrednost);
+							printk(KERN_WARNING"Vrednost txt_length signala je: %d\n", vrednost);
 					
 				}break;
 
@@ -473,10 +493,10 @@ ssize_t ED_write(struct file *pfile, const char __user *buffer, size_t length, l
 				case 5:
 		
 						if(vrednost!=0 && vrednost!=1){
-							printk(KERN_WARNING"IP:start_enc mora biti 1 ili 0");
+							printk(KERN_WARNING"IP:start_enc mora biti 1 ili 0\n");
 						}else{
 							iowrite32(vrednost, ip->base_addr+16);
-							printk(KERN_WARNING"Vrednost start_enc signala je: %d", vrednost);
+							printk(KERN_WARNING"Vrednost start_enc signala je: %d\n", vrednost);
 					
 				}break;
 	
@@ -484,20 +504,20 @@ ssize_t ED_write(struct file *pfile, const char __user *buffer, size_t length, l
 				case 6:
 
 						if(vrednost!=0 && vrednost!=1){
-							printk(KERN_WARNING"IP: start_dec mora biti 1 ili 0");
+							printk(KERN_WARNING"IP: start_dec mora biti 1 ili 0\n");
 						}else{
 							iowrite32(vrednost, ip->base_addr+20);
-							printk(KERN_WARNING"Vrednost start_dec signala je: %d", vrednost);
+							printk(KERN_WARNING"Vrednost start_dec signala je: %d\n", vrednost);
 					
 				}break;
 				
 
 				case 9:
 						if(vrednost!=0 && vrednost!=1){
-							printk(KERN_WARNING"IP:ready mora biti 1 ili 0");
+							printk(KERN_WARNING"IP:ready mora biti 1 ili 0\n");
 						}else{
 							iowrite32(vrednost, ip->base_addr+32);
-							printk(KERN_WARNING"Vrednost ready signala je: %d", vrednost);
+							printk(KERN_WARNING"Vrednost ready signala je: %d\n", vrednost);
 					
 				}break;
 
@@ -506,10 +526,10 @@ ssize_t ED_write(struct file *pfile, const char __user *buffer, size_t length, l
 
 	
 						if(vrednost!=0 && vrednost!=1){
-							printk(KERN_WARNING"IP:reset mora biti 1 ili 0");
+							printk(KERN_WARNING"IP:reset mora biti 1 ili 0\n");
 						}else{
 							iowrite32(vrednost, ip->base_addr+28);
-							printk(KERN_WARNING"Vrednost reset signala je: %d", vrednost);
+							printk(KERN_WARNING"Vrednost reset signala je: %d\n", vrednost);
 					
 				}break;
 
@@ -518,10 +538,10 @@ ssize_t ED_write(struct file *pfile, const char __user *buffer, size_t length, l
 			
 		
 						if(vrednost!=0 && vrednost!=1){
-							printk(KERN_WARNING"IP:start mora biti 1 ili 0");
+							printk(KERN_WARNING"IP:start mora biti 1 ili 0\n");
 						}else{
 							iowrite32(vrednost, ip->base_addr+24);
-							printk(KERN_WARNING"Vrednost start signala je: %d", vrednost);
+							printk(KERN_WARNING"Vrednost start signala je: %d\n", vrednost);
 					
 				}break;
 			}
@@ -592,6 +612,89 @@ ssize_t ED_write(struct file *pfile, const char __user *buffer, size_t length, l
 				
 }  
 
+int ED_mmap(struct file *f, struct vm_area_struct *vma_s){
+	
+	int ret = 0;
+	int minor = MINOR(f->f_inode->i_rdev);
+	unsigned long vsize;
+	unsigned long psize;
+	switch(minor){
+	
+	case 0:
+	
+		vsize = vma_s->vm_end - vma_s->vm_start; //velicina addr prostora koji zahteva aplikacija
+		psize = bp1->mem_end - bp1->mem_start+1; //velicina addr prostora koji zauzima jezgro
+		vma_s->vm_page_prot = pgprot_noncached(vma_s-> vm_page_prot);
+		printk(KERN_INFO "bram0:buffer is being memory mapped\n");
+
+		if(vsize>psize)
+		{
+			printk(KERN_ERR"bram0: Trying to mmap more space than it's allocated, mmap failed\n");
+			return -EIO;
+		}
+		ret = vm_iomap_memory(vma_s, bp1->mem_start, vsize);
+		if(ret)
+		{
+			printk(KERN_ERR"bram0:memory maped failed\n");
+			return ret;
+		}
+		printk(KERN_INFO"MMAP is a success form bram0\n");
+
+		break;
+
+
+	case 1:
+	
+		vsize = vma_s->vm_end - vma_s->vm_start; //velicina addr prostora koji zahteva aplikacija
+		psize = bp2->mem_end - bp2->mem_start+1; //velicina addr prostora koji zauzima jezgro
+		vma_s->vm_page_prot = pgprot_noncached(vma_s-> vm_page_prot);
+		printk(KERN_INFO "bram0:buffer is being memory mapped\n");
+
+		if(vsize>psize)
+		{
+			printk(KERN_ERR"bram1: Trying to mmap more space than it's allocated, mmap failed\n");
+			return -EIO;
+		}
+		ret = vm_iomap_memory(vma_s, bp2->mem_start, vsize);
+		if(ret)
+		{
+			printk(KERN_ERR"bram1:memory maped failed\n");
+			return ret;
+		}
+		printk(KERN_INFO"MMAP is a success form bram1\n");
+
+		break;
+
+
+	case 2:
+	
+		vsize = vma_s->vm_end - vma_s->vm_start; //velicina addr prostora koji zahteva aplikacija
+		psize = ip->mem_end - ip->mem_start+1; //velicina addr prostora koji zauzima jezgro
+		vma_s->vm_page_prot = pgprot_noncached(vma_s-> vm_page_prot);
+		printk(KERN_INFO "IP:buffer is being memory mapped\n");
+
+		if(vsize>psize)
+		{
+			printk(KERN_ERR"IP: Trying to mmap more space than it's allocated, mmap failed\n");
+			return -EIO;
+		}
+		ret = vm_iomap_memory(vma_s, ip->mem_start, vsize);
+		if(ret)
+		{
+			printk(KERN_ERR"IP:memory maped failed\n");
+			return ret;
+		}
+		printk(KERN_INFO"MMAP is a success form ip\n");
+
+		break;
+		
+		default:
+			printk(KERN_INFO"something went wrong\n");
+		
+		}
+	return 0;
+}
+	
 
 static int __init ED_init(void)
 {
