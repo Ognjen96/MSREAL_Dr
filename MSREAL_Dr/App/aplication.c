@@ -91,7 +91,7 @@ int main(int argc, char *argv[])
 {
 
 	FILE *fs;
-	int *encrypted_txt_array;
+	int *encrypted_txt_array, *decrypted_txt_array;
 	int txt_array[2048];
 	int fk, fc, fy, fb;
 	int *k, *c, *y, *g, *kk;
@@ -190,6 +190,21 @@ int i1, Phi,x, Pk, e, r, d, h;
 	}
 	
 //**************************************************************************************************************//
+char reset[] = "reset";
+fs = fopen("/dev/Enc_dec", "w");
+if (fs == NULL)
+{
+	printf("Cannot open /dev/Enc_dec for write\n");
+	return -1;
+}
+//fprintf(fs, "%s = %d", start_enc, 1);
+//fflush(fs);
+fprintf(fs, "%s = %d",reset, 1);
+fflush(fs);
+fprintf(fs, "%s = %d",reset, 0);
+fflush(fs);
+//fprintf(fs, "%s = %d", start_enc, 0);
+fclose(fs);
 
 //*************************************sending data to bram0***************************************************//
 
@@ -217,7 +232,7 @@ k=(int*)mmap(0, MAX_KERNEL_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fk, 0);
 //************************************************************************************************************************//
 //*************************************sending keys and length to IP**************************************//
 
-int ED_reg[5]={e,d,Pk,txt_length, 1};
+int ED_reg[4]={e,d,Pk,txt_length};
 		
 	fc = open("/dev/Enc_dec", O_RDWR|O_NDELAY);
 	if (c<0)
@@ -250,67 +265,18 @@ if (fs == NULL)
 	printf("Cannot open /dev/Enc_dec for write\n");
 	return -1;
 }
-//fprintf(fs, "%s = %d", start_enc, 1);
-//fflush(fs);
+fprintf(fs, "%s = %d", start_enc, 1);
+fflush(fs);
 fprintf(fs, "%s = %d", start, 1);
 fflush(fs);
-//fprintf(fs, "%s = %d", start, 0);
-//fflush(fs);
-//fprintf(fs, "%s = %d", start_enc, 0);
+fprintf(fs, "%s = %d", start, 0);
+fflush(fs);
+fprintf(fs, "%s = %d", start_enc, 0);
 fclose(fs);
-//*************************************setting start register to 1**************************************//
-
-/*int ED_reg1[9]={e,d,Pk,txt_length, 1, 0, 1, 0, 0};
-		
-	fc = open("/dev/Enc_dec", O_RDWR|O_NDELAY);
-	if (c<0)
-	{
-		printf("Cannot open /dev/Enc_dec for write\n");
-		return -1;
-	}
-	c=(int*)mmap(0, MAX_ED_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fc, 0);
-	if (c == NULL) {
-		printf("\ncouldn't mmap\n");
-		return 0;
-	}
-	memcpy(c, ED_reg1, ED_SEND);
-	munmap(c, ED_SEND);
-	printf("IP done\n");
-	close(fc);
-	if(fc<0)
-	{
-		printf("Cannot close /dev/Enc_dec for write\n");
-		return -1;
-	}*/
 //************************************************************************************************************//
-//*************************************clearing start bit**************************************//
 
-/*int ED_reg2[9]={e,d,Pk,txt_length, 0, 0, 0, 0, 0};
-		
-	fc = open("/dev/Enc_dec", O_RDWR|O_NDELAY);
-	if (c<0)
-	{
-		printf("Cannot open /dev/Enc_dec for write\n");
-		return -1;
-	}
-	c=(int*)mmap(0, MAX_ED_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fc, 0);
-	if (c == NULL) {
-		printf("\ncouldn't mmap\n");
-		return 0;
-	}
-	memcpy(c, ED_reg2, ED_SEND);
-	munmap(c, ED_SEND);
-	printf("IP done\n");
-	close(fc);
-	if(fc<0)
-	{
-		printf("Cannot close /dev/Enc_dec for write\n");
-		return -1;
-	}
-*/
-//************************************************************************************************************//
 //*************************************writing from bram1 to enc_txt**********************************************//
-/*fb = open("/dev/bram1", O_RDWR|O_NDELAY);
+fb = open("/dev/bram1", O_RDWR|O_NDELAY);
 	if(fb < 0)
 	{
 		printf("Cannot open /dev/bram1 for write\n");
@@ -331,10 +297,10 @@ fclose(fs);
 	{
 		printf("cannot close /dev/bram1 for write\n");
 		return -1;
-	}*/
+	}
 //************************************************************************************************************//
 //*************************************writing encrypted data to file****************************************//
-/*FILE *fm;
+FILE *fm;
 	fm = fopen("encrypted.txt", "w");
 	if(fm==NULL)
 	{
@@ -343,12 +309,11 @@ fclose(fs);
 	}
 
 	printf("Otvoren fajl.\n");
-	for(i = 0;i<=2047; i++)
+	for(i = 0;i<=(txt_length*2)-1; i++)
 	{
 		fprintf(fm, "%d ", encrypted_txt_array[i]);
 		fflush(fm);
 	
-		fprintf(fm, "\n");
 	}
 	fprintf(fm, "\n");
 	printf("encrypted data writen\n");
@@ -357,20 +322,23 @@ fclose(fs);
 	{
 		printf("cannot close encrypted.txt\n");
 		return -1;
-	}*/
-//***********************************************************************************************************//
-//*********************************************writing from encr_txt in buffer2************************************//
+	}
+//******************************************************************************************************************//
+//**********************************************writing from encr_txt in buffer3************************************//
 	
-/*int *buffer2 = NULL;
-buffer2 = (int*) malloc(MAX_BRAM_SIZE);
-
+int *buffer2 = NULL;
+int *buffer3 = NULL;
+buffer2 = (int *) malloc(2048 * sizeof(int));
+buffer3 = (int *) malloc(2048 * sizeof(int));
 memcpy(buffer2, encrypted_txt_array, MAX_BRAM_SIZE);
 for(i = 0; i<txt_length;i++){
-	printf("%d: %d, ", i, buffer[i]);
-}*/
-//*************************************sending data to bram0***************************************************//
+	buffer3[i] = (buffer2[2*i] << 16) | buffer2[2*i+1];
 
-/*fk = open("/dev/bram0", O_RDWR|O_NDELAY);
+}
+//***********************************************************************************************************************//
+//*************************************sending data from buff to bram0***************************************************//
+
+fk = open("/dev/bram0", O_RDWR|O_NDELAY);
 	if (fk<0)
 	{
 		printf("Cannot open /dev/bram0 for write\n");
@@ -381,7 +349,7 @@ for(i = 0; i<txt_length;i++){
 			printf("\ncouldn't mmap\n");
 			return 0;
 		}
-	memcpy(kk, buffer2, BLOCK_SIZE);
+	memcpy(kk, buffer3, BLOCK_SIZE);
 	munmap(kk, BLOCK_SIZE);
 	printf("bram0 done\n");
 	close(fk);
@@ -390,116 +358,92 @@ for(i = 0; i<txt_length;i++){
 		printf("cannot close /dev/bram0 for write\n");
 		return -1;
 	}
-*/
-//************************************************************************************************************************//
+
+//************************************************reset bit**************************************************************//
+
+fs = fopen("/dev/Enc_dec", "w");
+if (fs == NULL)
+{
+	printf("Cannot open /dev/Enc_dec for write\n");
+	return -1;
+}
+//fprintf(fs, "%s = %d", start_dec, 1);
+//fflush(fs);
+fprintf(fs, "%s = %d",reset, 1);
+fflush(fs);
+fprintf(fs, "%s = %d",reset, 0);
+fflush(fs);
+//fprintf(fs, "%s = %d", start_enc, 0);
+fclose(fs);
+
 
 //***************************************************************************************************************//
-//***************************************setting start_dec register to 1********************************************//
-/*uint32_t ED_reg3[9]={e,d,Pk,txt_length, 0, 1, 0, 0, 0};
-		
-	fc = open("/dev/Enc_dec", O_RDWR|O_NDELAY);
-	if (c<0)
+//****************************************setting and clearing start bit*******************************************************//
+char start_dec[] = "start_dec";
+fs = fopen("/dev/Enc_dec", "w");
+if (fs == NULL)
+{
+	printf("Cannot open /dev/Enc_dec for write\n");
+	return -1;
+}
+fprintf(fs, "%s = %d", start_dec, 1);
+fflush(fs);
+fprintf(fs, "%s = %d",start , 1);
+fflush(fs);
+fprintf(fs, "%s = %d",start_dec, 0);
+fflush(fs);
+//fprintf(fs, "%s = %d", start, 0);
+fclose(fs);
+//*************************************************************************************************************//
+//*************************************writing from bram1 to dec_txt**********************************************//
+fb = open("/dev/bram1", O_RDWR|O_NDELAY);
+	if(fb < 0)
 	{
-		printf("Cannot open /dev/Enc_dec for write\n");
+		printf("Cannot open /dev/bram1 for write\n");
 		return -1;
 	}
-	c=(uint32_t*)mmap(0, MAX_ED_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fc, 0);
-	if (c == NULL) {
-		printf("\ncouldn't mmap\n");
+	decrypted_txt_array = (int*) malloc(MAX_BRAM_SIZE);
+	g=(int*)mmap(0, MAX_BRAM_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fb, 0);
+	if(g == NULL) {
+		printf("\ncouldnt mmap\n");
 		return 0;
 	}
-	memcpy(c, ED_reg3, ED_SEND);
-	munmap(c, ED_SEND);
-	printf("IP done\n");
-	close(fc);
-	if(fc<0)
+	
+	memcpy(decrypted_txt_array, g, MAX_BRAM_SIZE);
+	munmap(g, MAX_BRAM_SIZE);
+	printf("bram1 done\n");
+	close(fb);
+	if(fb < 0)
 	{
-		printf("Cannot close /dev/Enc_dec for write\n");
+		printf("cannot close /dev/bram1 for write\n");
 		return -1;
 	}
-*/
 //************************************************************************************************************//
-//***************************************setting start register to 1********************************************//
-/*uint32_t ED_reg4[9]={e,d,Pk,txt_length, 0, 1, 1, 0, 0};
-		
-	fc = open("/dev/Enc_dec", O_RDWR|O_NDELAY);
-	if (c<0)
+//*************************************writing encrypted data to file****************************************//
+FILE *fv;
+	fv = fopen("decrypted.txt", "w");
+	if(fv==NULL)
 	{
-		printf("Cannot open /dev/Enc_dec for write\n");
+		printf("cannot open encrypted.txt\n");
 		return -1;
 	}
-	c=(uint32_t*)mmap(0, MAX_ED_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fc, 0);
-	if (c == NULL) {
-		printf("\ncouldn't mmap\n");
-		return 0;
-	}
-	memcpy(c, ED_reg4, ED_SEND);
-	munmap(c, ED_SEND);
-	printf("IP done\n");
-	close(fc);
-	if(fc<0)
+
+	printf("Otvoren fajl.\n");
+	for(i = 0;i<=(txt_length*2)-1; i++)
 	{
-		printf("Cannot close /dev/Enc_dec for write\n");
+		fprintf(fv, "%c", (char)decrypted_txt_array[i]);
+		fflush(fv);
+	}
+	fprintf(fv, "\n");
+	printf("encrypted data writen\n");
+	
+	if(fclose(fv) == EOF)
+	{
+		printf("cannot close encrypted.txt\n");
 		return -1;
 	}
-*/
-//************************************************************************************************************//
-//***************************************clearing start bit********************************************//
-/*uint32_t ED_reg5[9]={e,d,Pk,txt_length, 0, 0, 0, 0, 0};
-		
-	fc = open("/dev/Enc_dec", O_RDWR|O_NDELAY);
-	if (c<0)
-	{
-		printf("Cannot open /dev/Enc_dec for write\n");
-		return -1;
-	}
-	c=(uint32_t*)mmap(0, MAX_ED_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fc, 0);
-	if (c == NULL) {
-		printf("\ncouldn't mmap\n");
-		return 0;
-	}
-	memcpy(c, ED_reg5, ED_SEND);
-	munmap(c, ED_SEND);
-	printf("IP done\n");
-	close(fc);
-	if(fc<0)
-	{
-		printf("Cannot close /dev/Enc_dec for write\n");
-		return -1;
-	}
-*/
-//************************************************************************************************************//
+//******************************************************************************************************************//
 
-
-
-//*************************************setting start registre to one******************************************************//
-
-
-/*uint32_t ED_reg1[9]={e,p,q,txt_length,0,0,1,0,0};
-		
-	fy = open("/dev/Enc_dec", O_RDWR|O_NDELAY);
-	if (y<0)
-	{
-		printf("Cannot open /dev/Enc_dec for write\n");
-		return -1;
-	}
-	c=(uint32_t*)mmap(0, MAX_ED_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fy, 0);
-	if (y == NULL) {
-		printf("\ncouldn't mmap\n");
-		return 0;
-	}
-	memcpy(y, ED_reg1, ED_SEND);
-	munmap(y, ED_SEND);
-	printf("IP done\n");
-	close(fy);
-	if(fy<0)
-	{
-		printf("Cannot close /dev/Enc_dec for write\n");
-		return -1;
-	}
-*/
-
-//************************************************************************************************************************//
 
 
 
