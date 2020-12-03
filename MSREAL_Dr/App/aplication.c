@@ -23,7 +23,6 @@
 int prost = 0, p = 0, q = 0;
 
 static unsigned int txt_length=0;
-static unsigned int txt_length_res=0;
 static char txt[2048];
 
 void error(const char *msg)
@@ -47,20 +46,6 @@ int checkPrime(int n) {
 		prost = 0;
 	}
 	
-}
-
-void delay(int time)
-{
-	long pause;
-	clock_t time1, time2;
-	pause = time;
-	(CLOCKS_PER_SEC/1000);
-
-	time2 = time1 = clock();
-	while((time1-time2)<pause)
-	{
-		time1 = clock();
-	}
 }
 
 void prosti(){
@@ -166,18 +151,15 @@ int i1, Phi,x, Pk, e, r, d, h;
 	printf("%s\n", buffer);	
 	if (strlen(buffer)%2 == 1){
 		txt_length = (strlen(buffer) / 2);
-		txt_length_res = 2*txt_length-1;
 	}
 	else
 	{
 		txt_length = strlen(buffer) / 2;
-		txt_length_res = 2*txt_length;
 	}
 		printf("Duzina teksta: %d\n", txt_length);
 		printf("Message to encrypt: %s\n", buffer);
 	for (i = 0; i < (2*txt_length);i++){
 		txt[i] = buffer[i];
-//		printf("txt[%d]: %d, ",i,txt[i]);
 	}
 	
 	printf("\nEncryption test !!!\n");
@@ -185,8 +167,6 @@ int i1, Phi,x, Pk, e, r, d, h;
 	for(j = 0; j < txt_length; j++)
 	{
 		buffer1[j] = (buffer[2*j] << 16) | buffer[2*j+1];
-//		printf("%d: %d", j, buffer1[j]);
-//		printf("\n");
 	}
 	
 //**************************************************************************************************************//
@@ -197,13 +177,10 @@ if (fs == NULL)
 	printf("Cannot open /dev/Enc_dec for write\n");
 	return -1;
 }
-//fprintf(fs, "%s = %d", start_enc, 1);
-//fflush(fs);
 fprintf(fs, "%s = %d",reset, 1);
 fflush(fs);
 fprintf(fs, "%s = %d",reset, 0);
 fflush(fs);
-//fprintf(fs, "%s = %d", start_enc, 0);
 fclose(fs);
 
 //*************************************sending data to bram0***************************************************//
@@ -311,12 +288,12 @@ FILE *fm;
 	printf("Otvoren fajl.\n");
 	for(i = 0;i<=(txt_length*2)-1; i++)
 	{
-		fprintf(fm, "%d ", encrypted_txt_array[i]);
+		fprintf(fm, "%c", (char)encrypted_txt_array[i]);
 		fflush(fm);
 	
 	}
 	fprintf(fm, "\n");
-	printf("encrypted data writen\n");
+	printf("Enkriptovani podaci su uspesno upisani u encrypted.txt.\n");
 	
 	if(fclose(fm) == EOF)
 	{
@@ -367,13 +344,10 @@ if (fs == NULL)
 	printf("Cannot open /dev/Enc_dec for write\n");
 	return -1;
 }
-//fprintf(fs, "%s = %d", start_dec, 1);
-//fflush(fs);
 fprintf(fs, "%s = %d",reset, 1);
 fflush(fs);
 fprintf(fs, "%s = %d",reset, 0);
 fflush(fs);
-//fprintf(fs, "%s = %d", start_enc, 0);
 fclose(fs);
 
 
@@ -392,7 +366,6 @@ fprintf(fs, "%s = %d",start , 1);
 fflush(fs);
 fprintf(fs, "%s = %d",start_dec, 0);
 fflush(fs);
-//fprintf(fs, "%s = %d", start, 0);
 fclose(fs);
 //*************************************************************************************************************//
 //*************************************writing from bram1 to dec_txt**********************************************//
@@ -435,7 +408,7 @@ FILE *fv;
 		fflush(fv);
 	}
 	fprintf(fv, "\n");
-	printf("encrypted data writen\n");
+	printf("Dekriptovani podaci su uspesno upisani u decrypted.txt.\n");
 	
 	if(fclose(fv) == EOF)
 	{
@@ -443,12 +416,6 @@ FILE *fv;
 		return -1;
 	}
 //******************************************************************************************************************//
-
-
-
-
-
-
 
 	return 0;
 }
